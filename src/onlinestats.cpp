@@ -1,9 +1,13 @@
 #include <algorithm>
 #include <memory>
 
+#include <omp.h>
+
 #include <digestible/digestible.h>
 #include <nanobind/nanobind.h>
 #include <nanobind/ndarray.h>
+
+#include <iostream>
 
 namespace nb = nanobind;
 using namespace nb::literals;
@@ -58,6 +62,8 @@ private:
     void delete_digests()
     {
         auto digests = (digestible::tdigest<Self> *)m_digests;
+
+#pragma omp parallel for
         for (size_t i = 0; i < m_size; ++i) {
             digests[i].~tdigest<Self>();
         }
@@ -71,6 +77,8 @@ private:
         nb::capsule owner(buf, [](void *p) noexcept {
             delete[] (double *)p;
         });
+
+#pragma omp parallel for
         for (size_t i = 0; i < m_size; ++i) {
             digests[i].merge();
             buf[i] = digests[i].quantile(100 * q);
@@ -96,6 +104,8 @@ private:
         m_dtype = dtype<Self>();
         m_digests = operator new(m_size * sizeof(digestible::tdigest<Self>));
         auto digests = (digestible::tdigest<Self> *)m_digests;
+
+#pragma omp parallel for
         for (size_t i = 0; i < m_size; ++i)
             new (digests + i) digestible::tdigest<Self>(20);
     }
@@ -116,6 +126,8 @@ private:
     {
         auto digests = (digestible::tdigest<Self> *)m_digests;
         const Dtype *data = (const Dtype *)arr.data();
+
+#pragma omp parallel for
         for (size_t i = 0; i < m_size; ++i) {
             digests[i].insert(data[arridx(arr, i)]);
         }
