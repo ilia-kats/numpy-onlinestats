@@ -209,6 +209,18 @@ public:
 
     void add(const nb::ndarray<nb::device::cpu> &arr)
     {
+        auto msg = "Array shape does not match.";
+        if (arr.ndim() != m_ndim)
+            throw std::invalid_argument(msg);
+        bool shape_matches = true;
+        for (size_t i = 0; i < m_ndim; ++i)
+            if (arr.shape(i) != m_shape[i]) {
+                shape_matches = false;
+                break;
+            }
+        if (!shape_matches)
+            throw std::invalid_argument(msg);
+
         return dtype_switch([this, &arr]<typename Dtype> {
             return select_add<Dtype, DTYPES>(arr);
         });
