@@ -36,8 +36,6 @@ jobs:
           submodules: true
       - name: Install g++12
         run: |
-          sudo apt-get update
-          sudo apt-get install gcc-12 g++-12
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-12 1000
           sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-12 1000
       - name: Set up Python ${{ matrix.python }}
