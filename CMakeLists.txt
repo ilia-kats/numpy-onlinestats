@@ -35,7 +35,7 @@ find_package(OpenMP REQUIRED)
 set(CMAKE_BUILD_TYPE Release)
 
 include_directories(digestible/include)
-nanobind_add_module(_numpy_onlinestats_impl STABLE_ABI NB_STATIC src/onlinestats.cpp)
+nanobind_add_module(_numpy_onlinestats_impl STABLE_ABI NB_STATIC src/onlinestats.cpp src/RunningStats.cpp)
 set_property(TARGET _numpy_onlinestats_impl PROPERTY CXX_STANDARD 20)
 target_compile_options(_numpy_onlinestats_impl PRIVATE "${OpenMP_CXX_FLAGS}")
 target_link_options(_numpy_onlinestats_impl PRIVATE "${OpenMP_CXX_FLAGS}")

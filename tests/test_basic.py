@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+from scipy.stats import kurtosis, skew
 
 import numpy_onlinestats as npo
 
@@ -16,6 +17,24 @@ def test_digest(small_array):
 
     assert (stats.quantile(0.49) == 5.5 * small_array).all()
     assert (stats.quantile(0.09) == small_array).all()
+    assert (stats.min() == small_array).all()
+    assert (stats.max() == 10 * small_array).all()
+
+
+def test_statistics():
+    arrays = [np.random.uniform((5, 5, 5))]
+    stats = npo.NpOnlineStats(arrays[0])
+    for _i in range(99):
+        arr = np.random.uniform((5, 5, 5))
+        stats.add(arr)
+        arrays.append(arr)
+    arrays = np.stack(arrays, axis=0)
+
+    assert np.allclose(stats.mean(), arrays.mean(0))
+    assert np.allclose(stats.var(), arrays.var(0), rtol=1e-1)
+    assert np.allclose(stats.std(), arrays.std(0), rtol=1e-1)
+    assert np.allclose(stats.skewness(), skew(arrays, 0))
+    assert np.allclose(stats.kurtosis(), kurtosis(arrays, 0))
 
 
 def test_wrong_shape(small_array):

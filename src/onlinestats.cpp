@@ -7,7 +7,7 @@
 #include <nanobind/nanobind.h>
 #include <nanobind/ndarray.h>
 
-#include <iostream>
+#include "RunningStats.h"
 
 namespace nb = nanobind;
 using namespace nb::literals;
@@ -69,10 +69,9 @@ private:
         }
     }
 
-    template<typename Self>
-    nb::ndarray<nb::numpy, double> quantile_impl(double q)
+    template<typename Function>
+    nb::ndarray<nb::numpy, double> stat_array(Function f) const
     {
-        auto digests = (digestible::tdigest<Self> *)m_digests;
         double *buf = new double[m_size];
         nb::capsule owner(buf, [](void *p) noexcept {
             delete[] (double *)p;
@@ -80,10 +79,19 @@ private:
 
 #pragma omp parallel for
         for (size_t i = 0; i < m_size; ++i) {
-            digests[i].merge();
-            buf[i] = digests[i].quantile(100 * q);
+            buf[i] = f(i);
         }
         return nb::ndarray<nb::numpy, double>(buf, m_ndim, m_shape, owner, nullptr, nb::dtype<double>());
+    }
+
+    template<typename Self, typename Function>
+    auto digest_stat(Function f)
+    {
+        auto digests = (digestible::tdigest<Self> *)m_digests;
+        return stat_array([digests, f](size_t i) {
+            digests[i].merge();
+            return f(digests[i]);
+        });
     }
 
     template<typename Self>
@@ -108,6 +116,8 @@ private:
 #pragma omp parallel for
         for (size_t i = 0; i < m_size; ++i)
             new (digests + i) digestible::tdigest<Self>(20);
+
+        m_stats = new RunningStats[m_size];
     }
 
     template<typename Self, typename H, typename... Types>
@@ -138,11 +148,14 @@ private:
 #pragma omp parallel for
             for (size_t i = 0; i < m_size; ++i) {
                 digests[i].insert(data[i]);
+                m_stats[i].push(data[i]);
             }
         } else {
 #pragma omp parallel for
             for (size_t i = 0; i < m_size; ++i) {
-                digests[i].insert(data[arridx(arr, i)]);
+                auto idx = arridx(arr, i);
+                digests[i].insert(data[idx]);
+                m_stats[i].push(data[idx]);
             }
         }
     }
@@ -185,6 +198,7 @@ private:
     constexpr dtypes dtype();
 
     void *m_digests;
+    RunningStats *m_stats;
     size_t m_size;
     size_t m_ndim;
     size_t *m_shape;
@@ -201,10 +215,11 @@ public:
     {
         delete[] m_shape;
         delete[] m_stride;
-        dtype_switch([this]<typename Dtype> {
-            delete_digests<Dtype>();
+        dtype_switch([this]<typename Self> {
+            delete_digests<Self>();
         });
         operator delete(m_digests);
+        delete[] m_stats;
     }
 
     void add(const nb::ndarray<nb::device::cpu> &arr)
@@ -226,10 +241,77 @@ public:
         });
     }
 
-    nb::ndarray<nb::numpy, double> quantile(double q)
+    auto quantile(double q)
     {
-        return dtype_switch([this, q]<typename Dtype> {
-            return quantile_impl<Dtype>(q);
+        if (q < 0 || q > 1)
+            throw std::domain_error("Quantile must be between 0 and 1.");
+        return dtype_switch([this, q]<typename Self> {
+            return digest_stat<Self>([q](digestible::tdigest<Self> &digest) {
+                return digest.quantile(100 * q);
+            });
+        });
+    }
+
+    auto max()
+    {
+        return dtype_switch([this]<typename Self> {
+            return digest_stat<Self>([](digestible::tdigest<Self> &digest) {
+                return digest.max();
+            });
+        });
+    }
+
+    auto min()
+    {
+        return dtype_switch([this]<typename Self> {
+            return digest_stat<Self>([](digestible::tdigest<Self> &digest) {
+                return digest.min();
+            });
+        });
+    }
+
+    template<typename Dtype>
+    auto cdf(Dtype x)
+    {
+        return dtype_switch([this, x]<typename Self> {
+            return digest_stat<Self>([x](digestible::tdigest<Self> &digest) {
+                return digest.cumulative_distribution(x);
+            });
+        });
+    }
+
+    auto mean() const
+    {
+        return stat_array([this](size_t i) {
+            return m_stats[i].mean();
+        });
+    }
+
+    auto var() const
+    {
+        return stat_array([this](size_t i) {
+            return m_stats[i].var();
+        });
+    }
+
+    auto std() const
+    {
+        return stat_array([this](size_t i) {
+            return m_stats[i].stddev();
+        });
+    }
+
+    auto skewness() const
+    {
+        return stat_array([this](size_t i) {
+            return m_stats[i].skewness();
+        });
+    }
+
+    auto kurtosis() const
+    {
+        return stat_array([this](size_t i) {
+            return m_stats[i].kurtosis();
         });
     }
 };
@@ -290,5 +372,22 @@ NB_MODULE(_numpy_onlinestats_impl, m)
     nb::class_<OnlineStats>(m, "NpOnlineStats")
         .def(nb::init<const nb::ndarray<nb::device::cpu> &>())
         .def("add", &OnlineStats::add)
-        .def("quantile", &OnlineStats::quantile);
+        .def("quantile", &OnlineStats::quantile)
+        .def("max", &OnlineStats::max)
+        .def("min", &OnlineStats::min)
+        .def("cdf", &OnlineStats::cdf<float>)
+        .def("cdf", &OnlineStats::cdf<double>)
+        .def("cdf", &OnlineStats::cdf<int8_t>)
+        .def("cdf", &OnlineStats::cdf<int16_t>)
+        .def("cdf", &OnlineStats::cdf<int32_t>)
+        .def("cdf", &OnlineStats::cdf<int64_t>)
+        .def("cdf", &OnlineStats::cdf<uint8_t>)
+        .def("cdf", &OnlineStats::cdf<uint16_t>)
+        .def("cdf", &OnlineStats::cdf<uint32_t>)
+        .def("cdf", &OnlineStats::cdf<uint64_t>)
+        .def("mean", &OnlineStats::mean)
+        .def("var", &OnlineStats::var)
+        .def("std", &OnlineStats::std)
+        .def("skewness", &OnlineStats::skewness)
+        .def("kurtosis", &OnlineStats::kurtosis);
 }
