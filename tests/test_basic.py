@@ -22,7 +22,7 @@ def test_digest(small_array):
 
 
 def test_statistics():
-    arrays = [np.random.uniform((5, 5, 5))]
+    arrays = [np.random.uniform((5, 3, 7))]
     stats = npo.NpOnlineStats(arrays[0])
     for _i in range(99):
         arr = np.random.uniform((5, 5, 5))

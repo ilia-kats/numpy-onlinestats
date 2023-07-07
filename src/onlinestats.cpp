@@ -369,13 +369,62 @@ constexpr OnlineStats::dtypes OnlineStats::dtype<uint64_t>()
 
 NB_MODULE(_numpy_onlinestats_impl, m)
 {
-    nb::class_<OnlineStats>(m, "NpOnlineStats")
-        .def(nb::init<const nb::ndarray<nb::device::cpu> &>())
-        .def("add", &OnlineStats::add)
-        .def("quantile", &OnlineStats::quantile)
-        .def("max", &OnlineStats::max)
-        .def("min", &OnlineStats::min)
-        .def("cdf", &OnlineStats::cdf<float>)
+    nb::class_<OnlineStats>(m, "NpOnlineStats", R"___(
+Streaming statistics for numpy arrays.
+
+This class accumulates element-wise statistics for Numpy arrays in an online fashion:
+The arrays themselves are not stored in memory. This enables calculation of (appriximate)
+statistics for very large collections of arrays. Quantiles are approximated using the
+t-digest algorithm and its `implementation <https://github.com/SpirentOrion/digestible>`_.
+Moments are implemented using a `numerically stable algorithm <https://www.johndcook.com/blog/skewness_kurtosis/>`_.
+
+References:
+    Dunning and Ertl, 2019 (`arXiv:1902.04023 <http://arxiv.org/abs/1902.04023>`_)
+
+Args:
+    arr: First numpy array.
+
+Note:
+    All following arrays must have the same shape. The data type of
+    the internal state is determined by `arr.dtype`, which may or may not be what you want.
+    Pass `arr.astype(np.float64)` for best results.
+)___")
+        .def(nb::init<const nb::ndarray<nb::device::cpu> &>(), "arr"_a)
+        .def("add", &OnlineStats::add, "arr"_a, R"___(
+Add an array to the accumulator.
+
+Args:
+    arr: An array.
+)___")
+        .def("quantile", &OnlineStats::quantile, "q"_a, R"___(
+Calculate an approximate quantile based on the current state.
+
+Args:
+    q: A quantile. Must be between 0 and 1.
+
+Returns:
+    A Numpy array.
+)___")
+        .def("max", &OnlineStats::max, R"___(
+Get the element-wise maximum of all seen arrays.
+
+Returns:
+    A Numpy array.
+)___")
+        .def("min", &OnlineStats::min, R"___(
+Get the element-wise minimum of all seen arrays.
+
+Returns:
+    A Numpy array.
+)___")
+        .def("cdf", &OnlineStats::cdf<float>, "x"_a, R"___(
+Calculate the element-wise approximate cumulative distribution function.
+
+Args:
+    x: Value at which the CDF is to be calculated.
+
+Returns: A Numpy array.
+        )___")
         .def("cdf", &OnlineStats::cdf<double>)
         .def("cdf", &OnlineStats::cdf<int8_t>)
         .def("cdf", &OnlineStats::cdf<int16_t>)
@@ -385,9 +434,29 @@ NB_MODULE(_numpy_onlinestats_impl, m)
         .def("cdf", &OnlineStats::cdf<uint16_t>)
         .def("cdf", &OnlineStats::cdf<uint32_t>)
         .def("cdf", &OnlineStats::cdf<uint64_t>)
-        .def("mean", &OnlineStats::mean)
-        .def("var", &OnlineStats::var)
-        .def("std", &OnlineStats::std)
-        .def("skewness", &OnlineStats::skewness)
-        .def("kurtosis", &OnlineStats::kurtosis);
+        .def("mean", &OnlineStats::mean, R"___(
+Calculate the element-wise mean of all seen arrays.
+
+Returns: A Numpy array.
+)___")
+        .def("var", &OnlineStats::var, R"___(
+Calculate the element-wise variance of all seen arrays.
+
+Returns: A Numpy array.
+)___")
+        .def("std", &OnlineStats::std, R"___(
+Calculate the element-wise standard deviation of all seen arrays.
+
+Returns: A Numpy array.
+)___")
+        .def("skewness", &OnlineStats::skewness, R"___(
+Calculate the element-wise skewness of all seen arrays.
+
+Returns: A Numpy array.
+)___")
+        .def("kurtosis", &OnlineStats::kurtosis, R"___(
+Calculate the element-wise kurtosis of all seen arrays.
+
+Returns: A Numpy array.
+)___");
 }
