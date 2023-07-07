@@ -127,15 +127,24 @@ private:
         auto digests = (digestible::tdigest<Self> *)m_digests;
         const Dtype *data = (const Dtype *)arr.data();
 
-#pragma omp parallel for
-        for (size_t i = 0; i < m_size; ++i) {
-            digests[i].insert(data[arridx(arr, i)]);
-        }
-    }
+        bool match_strides = true;
+        for (size_t i = 0; i < m_ndim; ++i)
+            if (arr.stride(i) != m_stride[i]) {
+                match_strides = false;
+                break;
+            }
 
-    inline size_t arridx(const nb::ndarray<nb::c_contig, nb::device::cpu> &arr, size_t i)
-    {
-        return i;
+        if (match_strides) {
+#pragma omp parallel for
+            for (size_t i = 0; i < m_size; ++i) {
+                digests[i].insert(data[i]);
+            }
+        } else {
+#pragma omp parallel for
+            for (size_t i = 0; i < m_size; ++i) {
+                digests[i].insert(data[arridx(arr, i)]);
+            }
+        }
     }
 
     inline size_t arridx(const nb::ndarray<nb::device::cpu> &arr, size_t i)
