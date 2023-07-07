@@ -1,11 +1,15 @@
 #include <algorithm>
+#include <cstdint>
 #include <memory>
+#include <stdexcept>
 
 #include <omp.h>
 
 #include <digestible/digestible.h>
 #include <nanobind/nanobind.h>
 #include <nanobind/ndarray.h>
+#include <nanobind/stl/string.h>
+#include <string>
 
 #include "RunningStats.h"
 
@@ -14,13 +18,71 @@ using namespace nb::literals;
 
 #define DTYPES float, double, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t
 
+template<typename T>
+constexpr const char *dtype_str()
+{
+    throw std::invalid_argument("Unsupported dtype");
+    return "ERROR";
+}
+
+template<>
+constexpr const char *dtype_str<float>()
+{
+    return "np.float32";
+}
+template<>
+constexpr const char *dtype_str<double>()
+{
+    return "np.float64";
+}
+template<>
+constexpr const char *dtype_str<int8_t>()
+{
+    return "np.int8";
+}
+template<>
+constexpr const char *dtype_str<int16_t>()
+{
+    return "np.int16";
+}
+template<>
+constexpr const char *dtype_str<int32_t>()
+{
+    return "np.int32";
+}
+template<>
+constexpr const char *dtype_str<int64_t>()
+{
+    return "np.int64";
+}
+template<>
+constexpr const char *dtype_str<uint8_t>()
+{
+    return "np.uint8";
+}
+template<>
+constexpr const char *dtype_str<uint16_t>()
+{
+    return "np.uint16";
+}
+template<>
+constexpr const char *dtype_str<uint32_t>()
+{
+    return "np.uint32";
+}
+template<>
+constexpr const char *dtype_str<uint64_t>()
+{
+    return "np.uint64";
+}
+
 class OnlineStats
 {
 private:
     enum class dtypes { f16, f32, f64, i8, i16, i32, i64, u8, u16, u32, u64 };
 
     template<typename Function>
-    decltype(auto) dtype_switch(Function f)
+    decltype(auto) dtype_switch(Function f) const
     {
         switch (m_dtype) {
         case dtypes::f32:
@@ -158,6 +220,7 @@ private:
                 m_stats[i].push(data[idx]);
             }
         }
+        ++m_n;
     }
 
     inline size_t arridx(const nb::ndarray<nb::device::cpu> &arr, size_t i)
@@ -204,6 +267,7 @@ private:
     size_t *m_shape;
     size_t *m_stride;
     dtypes m_dtype;
+    uint64_t m_n = 0;
 
 public:
     OnlineStats(const nb::ndarray<nb::device::cpu> &initial)
@@ -313,6 +377,26 @@ public:
         return stat_array([this](size_t i) {
             return m_stats[i].kurtosis();
         });
+    }
+
+    std::string repr() const
+    {
+        std::string repr("NpOnlineStats object. Shape: (");
+        for (size_t i = 0; i < m_ndim - 1; ++i)
+            repr += std::to_string(m_shape[i]) + ",";
+        repr += std::to_string(m_shape[m_ndim - 1]) + ")";
+        repr += ", dtype: ";
+
+        // possibly related to https://gcc.gnu.org/bugzilla/show_bug.cgi?id=64194
+        repr += dtype_switch([]<typename Self>() {
+            return dtype_str<Self>();
+        });
+
+        repr += ". Accumulated " + std::to_string(m_n) + " array";
+        if (m_n > 1)
+            repr += "s";
+        repr += ".";
+        return repr;
     }
 };
 
@@ -458,5 +542,6 @@ Returns: A Numpy array.
 Calculate the element-wise kurtosis of all seen arrays.
 
 Returns: A Numpy array.
-)___");
+)___")
+        .def("__repr__", &OnlineStats::repr);
 }
