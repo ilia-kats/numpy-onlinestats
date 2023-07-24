@@ -157,7 +157,7 @@ private:
     }
 
     template<typename Self>
-    void init(const nb::ndarray<nb::device::cpu> &arr)
+    void init(const nb::ndarray<nb::device::cpu> &arr, size_t size)
     {
         m_size = arr.size();
         m_ndim = arr.ndim();
@@ -177,7 +177,7 @@ private:
 
 #pragma omp parallel for
         for (size_t i = 0; i < m_size; ++i)
-            new (digests + i) digestible::tdigest<Self>(20);
+            new (digests + i) digestible::tdigest<Self>(size);
 
         m_stats = new RunningStats[m_size];
     }
@@ -246,13 +246,13 @@ private:
     }
 
     template<typename H, typename... Types>
-    void select_initial(const nb::ndarray<nb::device::cpu> &arr)
+    void select_initial(const nb::ndarray<nb::device::cpu> &arr, size_t size)
     {
         if (arr.dtype() == nb::dtype<H>()) {
-            init<H>(arr);
+            init<H>(arr, size);
             select_add<H, DTYPES>(arr);
         } else if constexpr (sizeof...(Types) > 0)
-            select_initial<Types...>(arr);
+            select_initial<Types...>(arr, size);
         else
             throw std::invalid_argument("Unsupported dtype");
     }
@@ -270,9 +270,9 @@ private:
     uint64_t m_n = 0;
 
 public:
-    OnlineStats(const nb::ndarray<nb::device::cpu> &initial)
+    OnlineStats(const nb::ndarray<nb::device::cpu> &initial, size_t size = 20)
     {
-        select_initial<DTYPES>(initial);
+        select_initial<DTYPES>(initial, size);
     }
 
     ~OnlineStats()
@@ -467,13 +467,14 @@ References:
 
 Args:
     arr: First numpy array.
+    size: Size of the t-digest buffer. Also used to determine the compression factor.
 
 Note:
     All following arrays must have the same shape. The data type of
     the internal state is determined by `arr.dtype`, which may or may not be what you want.
     Pass `arr.astype(np.float64)` for best results.
 )___")
-        .def(nb::init<const nb::ndarray<nb::device::cpu> &>(), "arr"_a)
+        .def(nb::init<const nb::ndarray<nb::device::cpu> &, size_t>(), "arr"_a, "size"_a = 20)
         .def("add", &OnlineStats::add, "arr"_a, R"___(
 Add an array to the accumulator.
 

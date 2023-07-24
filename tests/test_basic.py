@@ -47,3 +47,7 @@ def test_wrong_ndim(small_array):
     stats = npo.NpOnlineStats(small_array)
     with pytest.raises(ValueError, match="Array shape does not match"):
         stats.add(np.ones((4, 2)))
+
+
+def test_constructor_arg(small_array):
+    npo.NpOnlineStats(small_array, 10)
