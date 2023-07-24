@@ -1,7 +1,9 @@
 #include <algorithm>
 #include <cstdint>
+#include <iterator>
 #include <memory>
 #include <stdexcept>
+#include <string>
 
 #include <omp.h>
 
@@ -9,7 +11,6 @@
 #include <nanobind/nanobind.h>
 #include <nanobind/ndarray.h>
 #include <nanobind/stl/string.h>
-#include <string>
 
 #include "RunningStats.h"
 
@@ -387,7 +388,6 @@ public:
         repr += std::to_string(m_shape[m_ndim - 1]) + ")";
         repr += ", dtype: ";
 
-        // possibly related to https://gcc.gnu.org/bugzilla/show_bug.cgi?id=64194
         repr += dtype_switch([]<typename Self>() {
             return dtype_str<Self>();
         });
