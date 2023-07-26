@@ -11,6 +11,7 @@
 #include <nanobind/nanobind.h>
 #include <nanobind/ndarray.h>
 #include <nanobind/stl/string.h>
+#include <nanobind/stl/vector.h>
 
 #include "RunningStats.h"
 
@@ -29,52 +30,52 @@ constexpr const char *dtype_str()
 template<>
 constexpr const char *dtype_str<float>()
 {
-    return "np.float32";
+    return "float32";
 }
 template<>
 constexpr const char *dtype_str<double>()
 {
-    return "np.float64";
+    return "float64";
 }
 template<>
 constexpr const char *dtype_str<int8_t>()
 {
-    return "np.int8";
+    return "int8";
 }
 template<>
 constexpr const char *dtype_str<int16_t>()
 {
-    return "np.int16";
+    return "int16";
 }
 template<>
 constexpr const char *dtype_str<int32_t>()
 {
-    return "np.int32";
+    return "int32";
 }
 template<>
 constexpr const char *dtype_str<int64_t>()
 {
-    return "np.int64";
+    return "int64";
 }
 template<>
 constexpr const char *dtype_str<uint8_t>()
 {
-    return "np.uint8";
+    return "uint8";
 }
 template<>
 constexpr const char *dtype_str<uint16_t>()
 {
-    return "np.uint16";
+    return "uint16";
 }
 template<>
 constexpr const char *dtype_str<uint32_t>()
 {
-    return "np.uint32";
+    return "uint32";
 }
 template<>
 constexpr const char *dtype_str<uint64_t>()
 {
-    return "np.uint64";
+    return "uint64";
 }
 
 class OnlineStats
@@ -164,14 +165,17 @@ private:
         m_ndim = arr.ndim();
         m_shape = new size_t[m_ndim];
         m_stride = new size_t[m_ndim];
+        m_stride_bytes = new size_t[m_ndim];
         for (size_t i = 0; i < m_ndim; ++i)
             m_shape[i] = arr.shape(i);
         size_t stride = 1;
         for (size_t i = m_ndim - 1; i > 0; --i) {
             m_stride[i] = stride;
+            m_stride_bytes[i] = stride * sizeof(Self);
             stride *= m_shape[i];
         }
         m_stride[0] = stride;
+        m_stride_bytes[0] = stride * sizeof(Self);
         m_dtype = dtype<Self>();
         m_digests = operator new(m_size * sizeof(digestible::tdigest<Self>));
         auto digests = (digestible::tdigest<Self> *)m_digests;
@@ -202,7 +206,7 @@ private:
 
         bool match_strides = true;
         for (size_t i = 0; i < m_ndim; ++i)
-            if (arr.stride(i) != m_stride[i]) {
+            if (arr.stride(i) != m_stride_bytes[i]) {
                 match_strides = false;
                 break;
             }
@@ -267,6 +271,7 @@ private:
     size_t m_ndim;
     size_t *m_shape;
     size_t *m_stride;
+    size_t *m_stride_bytes;
     dtypes m_dtype;
     uint64_t m_n = 0;
 
@@ -280,6 +285,7 @@ public:
     {
         delete[] m_shape;
         delete[] m_stride;
+        delete[] m_stride_bytes;
         dtype_switch([this]<typename Self> {
             delete_digests<Self>();
         });
@@ -380,6 +386,33 @@ public:
         });
     }
 
+    auto np_dtype() const
+    {
+        return nb::module_::import_("numpy").attr(dtype_switch([]<typename Self>() {
+            return dtype_str<Self>();
+        }));
+    }
+
+    auto np_shape() const
+    {
+        return nb::tuple(nb::cast(std::vector<size_t>(m_shape, m_shape + m_ndim)));
+    }
+
+    auto np_strides() const
+    {
+        return nb::tuple(nb::cast(std::vector<size_t>(m_stride_bytes, m_stride_bytes + m_ndim)));
+    }
+
+    size_t size() const
+    {
+        return m_size;
+    }
+
+    size_t ndim() const
+    {
+        return m_ndim;
+    }
+
     std::string repr() const
     {
         std::string repr("NpOnlineStats object. Shape: (");
@@ -475,6 +508,21 @@ Note:
     Pass `arr.astype(np.float64)` for best results.
 )___")
         .def(nb::init<const nb::ndarray<nb::device::cpu> &, size_t>(), "arr"_a, "size"_a = 20)
+        .def_prop_ro("dtype", &OnlineStats::np_dtype, R"___(
+The dtype of the accumulator.
+)___")
+        .def_prop_ro("shape", &OnlineStats::np_shape, R"___(
+The shape of the accumulator.
+)___")
+        .def_prop_ro("strides", &OnlineStats::np_strides, R"___(
+The strides of the accumulator.
+)___")
+        .def_prop_ro("size", &OnlineStats::size, R"___(
+The size of the accumulator.
+)___")
+        .def_prop_ro("ndim", &OnlineStats::ndim, R"___(
+The number of dimensions of the accumulator.
+)___")
         .def("add", &OnlineStats::add, "arr"_a, R"___(
 Add an array to the accumulator.
 
