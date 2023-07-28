@@ -17,6 +17,12 @@ license = {file = "LICENSE"}
 dependencies = [
     "numpy"
 ]
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: C++",
+    "Topic :: Scientific/Engineering"
+]
 
 [project.optional-dependencies]
 test = [
