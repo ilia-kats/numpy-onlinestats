@@ -265,36 +265,50 @@ private:
     template<typename H>
     constexpr dtypes dtype();
 
-    void *m_digests;
-    RunningStats *m_stats;
+    void *m_digests = nullptr;
+    RunningStats *m_stats = nullptr;
+    size_t m_digestsize;
     size_t m_size;
     size_t m_ndim;
-    size_t *m_shape;
-    size_t *m_stride;
-    size_t *m_stride_bytes;
+    size_t *m_shape = nullptr;
+    size_t *m_stride = nullptr;
+    size_t *m_stride_bytes = nullptr;
     dtypes m_dtype;
     uint64_t m_n = 0;
 
 public:
     OnlineStats(const nb::ndarray<nb::device::cpu> &initial, size_t size = 20)
+        : m_digestsize(size)
     {
         select_initial<DTYPES>(initial, size);
     }
 
+    OnlineStats(size_t size = 20)
+        : m_digestsize(size)
+    {
+    }
+
     ~OnlineStats()
     {
-        delete[] m_shape;
-        delete[] m_stride;
-        delete[] m_stride_bytes;
-        dtype_switch([this]<typename Self> {
-            delete_digests<Self>();
-        });
-        operator delete(m_digests);
-        delete[] m_stats;
+        if (m_digests != nullptr) {
+            delete[] m_shape;
+            delete[] m_stride;
+            delete[] m_stride_bytes;
+            dtype_switch([this]<typename Self> {
+                delete_digests<Self>();
+            });
+            operator delete(m_digests);
+            delete[] m_stats;
+        }
     }
 
     void add(const nb::ndarray<nb::device::cpu> &arr)
     {
+        if (m_digests == nullptr) {
+            select_initial<DTYPES>(arr, m_digestsize);
+            return;
+        }
+
         auto msg = "Array shape does not match.";
         if (arr.ndim() != m_ndim)
             throw std::invalid_argument(msg);
@@ -415,18 +429,23 @@ public:
 
     std::string repr() const
     {
-        std::string repr("NpOnlineStats object. Shape: (");
-        for (size_t i = 0; i < m_ndim - 1; ++i)
-            repr += std::to_string(m_shape[i]) + ",";
-        repr += std::to_string(m_shape[m_ndim - 1]) + ")";
-        repr += ", dtype: ";
+        std::string repr("NpOnlineStats object.");
 
-        repr += dtype_switch([]<typename Self>() {
-            return dtype_str<Self>();
-        });
+        if (m_digests != nullptr) {
+            repr += " Shape: (";
+            for (size_t i = 0; i < m_ndim - 1; ++i)
+                repr += std::to_string(m_shape[i]) + ",";
+            repr += std::to_string(m_shape[m_ndim - 1]) + ")";
+            repr += ", dtype: ";
 
-        repr += ". Accumulated " + std::to_string(m_n) + " array";
-        if (m_n > 1)
+            repr += dtype_switch([]<typename Self>() {
+                return dtype_str<Self>();
+            });
+            repr += ".";
+        }
+
+        repr += " Accumulated " + std::to_string(m_n) + " array";
+        if (m_n == 0 || m_n > 1)
             repr += "s";
         repr += ".";
         return repr;
@@ -499,7 +518,7 @@ References:
     Dunning and Ertl, 2019 (`arXiv:1902.04023 <http://arxiv.org/abs/1902.04023>`_)
 
 Args:
-    arr: First numpy array.
+    arr: First numpy array. Optional, if missing the accumulator will be initialized with the first call to `add`.
     size: Size of the t-digest buffer. Also used to determine the compression factor.
 
 Note:
@@ -508,6 +527,7 @@ Note:
     Pass `arr.astype(np.float64)` for best results.
 )___")
         .def(nb::init<const nb::ndarray<nb::device::cpu> &, size_t>(), "arr"_a, "size"_a = 20)
+        .def(nb::init<size_t>(), "size"_a = 20)
         .def_prop_ro("dtype", &OnlineStats::np_dtype, R"___(
 The dtype of the accumulator.
 )___")
