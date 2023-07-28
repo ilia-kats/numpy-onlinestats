@@ -163,19 +163,21 @@ private:
     {
         m_size = arr.size();
         m_ndim = arr.ndim();
-        m_shape = new size_t[m_ndim];
-        m_stride = new size_t[m_ndim];
-        m_stride_bytes = new size_t[m_ndim];
-        for (size_t i = 0; i < m_ndim; ++i)
-            m_shape[i] = arr.shape(i);
-        size_t stride = 1;
-        for (size_t i = m_ndim - 1; i > 0; --i) {
-            m_stride[i] = stride;
-            m_stride_bytes[i] = stride * sizeof(Self);
-            stride *= m_shape[i];
+        if (m_ndim > 0) {
+            m_shape = new size_t[m_ndim];
+            m_stride = new size_t[m_ndim];
+            m_stride_bytes = new size_t[m_ndim];
+            for (size_t i = 0; i < m_ndim; ++i)
+                m_shape[i] = arr.shape(i);
+            size_t stride = 1;
+            for (size_t i = m_ndim - 1; i > 0; --i) {
+                m_stride[i] = stride;
+                m_stride_bytes[i] = stride * sizeof(Self);
+                stride *= m_shape[i];
+            }
+            m_stride[0] = stride;
+            m_stride_bytes[0] = stride * sizeof(Self);
         }
-        m_stride[0] = stride;
-        m_stride_bytes[0] = stride * sizeof(Self);
         m_dtype = dtype<Self>();
         m_digests = operator new(m_size * sizeof(digestible::tdigest<Self>));
         auto digests = (digestible::tdigest<Self> *)m_digests;
@@ -291,9 +293,11 @@ public:
     ~OnlineStats()
     {
         if (m_digests != nullptr) {
-            delete[] m_shape;
-            delete[] m_stride;
-            delete[] m_stride_bytes;
+            if (m_ndim > 0) {
+                delete[] m_shape;
+                delete[] m_stride;
+                delete[] m_stride_bytes;
+            }
             dtype_switch([this]<typename Self> {
                 delete_digests<Self>();
             });
@@ -433,10 +437,12 @@ public:
 
         if (m_digests != nullptr) {
             repr += " Shape: (";
-            for (size_t i = 0; i < m_ndim - 1; ++i)
-                repr += std::to_string(m_shape[i]) + ",";
-            repr += std::to_string(m_shape[m_ndim - 1]) + ")";
-            repr += ", dtype: ";
+            if (m_ndim > 0) {
+                for (size_t i = 0; i < m_ndim - 1; ++i)
+                    repr += std::to_string(m_shape[i]) + ",";
+                repr += std::to_string(m_shape[m_ndim - 1]);
+            }
+            repr += "), dtype: ";
 
             repr += dtype_switch([]<typename Self>() {
                 return dtype_str<Self>();
