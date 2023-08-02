@@ -21,6 +21,18 @@ def test_digest(small_array):
     assert (stats.max() == 10 * small_array).all()
 
 
+def test_reset(small_array):
+    stats = npo.NpOnlineStats(small_array)
+    for i in range(2, 11):
+        stats.add(i * small_array)
+
+    stats.reset()
+    assert (stats.mean() == 0).all()
+    for i in range(1, 11):
+        stats.add(i * small_array)
+    assert (stats.quantile(0.49) == 5.5 * small_array).all()
+
+
 def test_scalar():
     stats = npo.NpOnlineStats(np.asarray(5))
     repr(stats)

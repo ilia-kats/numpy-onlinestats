@@ -122,17 +122,6 @@ private:
         }
     }
 
-    template<typename Self>
-    void delete_digests()
-    {
-        auto digests = (digestible::tdigest<Self> *)m_digests;
-
-#pragma omp parallel for
-        for (size_t i = 0; i < m_size; ++i) {
-            digests[i].~tdigest<Self>();
-        }
-    }
-
     template<typename Function>
     nb::ndarray<nb::numpy, double> stat_array(Function f) const
     {
@@ -299,11 +288,30 @@ public:
                 delete[] m_stride_bytes;
             }
             dtype_switch([this]<typename Self> {
-                delete_digests<Self>();
+                auto digests = (digestible::tdigest<Self> *)m_digests;
+
+#pragma omp parallel for
+                for (size_t i = 0; i < m_size; ++i) {
+                    digests[i].~tdigest<Self>();
+                }
             });
             operator delete(m_digests);
             delete[] m_stats;
         }
+    }
+
+    void reset()
+    {
+        m_n = 0;
+        dtype_switch([this]<typename Self>() {
+            auto digests = (digestible::tdigest<Self> *)m_digests;
+
+#pragma omp parallel for
+            for (size_t i = 0; i < m_size; ++i) {
+                digests[i].reset();
+                m_stats[i].clear();
+            }
+        });
     }
 
     void add(const nb::ndarray<nb::device::cpu> &arr)
@@ -554,6 +562,9 @@ Add an array to the accumulator.
 
 Args:
     arr: An array.
+)___")
+        .def("reset", &OnlineStats::reset, R"___(
+Reset the accumulator. Dtype and shape are kept, only the statistics are reset.
 )___")
         .def("quantile", &OnlineStats::quantile, "q"_a, R"___(
 Calculate an approximate quantile based on the current state.
