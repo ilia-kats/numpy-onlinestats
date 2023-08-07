@@ -36,6 +36,7 @@ doc = [
     "sphinx>=4",
     "sphinx-book-theme>=1.0.0",
     "sphinx-autodoc-typehints",
+    "myst-parser"
 ]
 
 [tool.scikit-build]
