@@ -439,6 +439,11 @@ public:
         return m_ndim;
     }
 
+    uint64_t n_accumulated() const
+    {
+        return m_n;
+    }
+
     std::string repr() const
     {
         std::string repr("NpOnlineStats object.");
@@ -556,6 +561,9 @@ The size of the accumulator.
 )___")
         .def_prop_ro("ndim", &OnlineStats::ndim, R"___(
 The number of dimensions of the accumulator.
+)___")
+        .def_prop_ro("nacc", &OnlineStats::n_accumulated, R"___(
+The number of samples accumulated.
 )___")
         .def("add", &OnlineStats::add, "arr"_a, R"___(
 Add an array to the accumulator.

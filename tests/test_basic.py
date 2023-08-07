@@ -19,6 +19,7 @@ def test_digest(small_array):
     assert (stats.quantile(0.09) == small_array).all()
     assert (stats.min() == small_array).all()
     assert (stats.max() == 10 * small_array).all()
+    assert stats.nacc == 10
 
 
 def test_reset(small_array):
