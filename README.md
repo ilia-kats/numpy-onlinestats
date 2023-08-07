@@ -1,5 +1,10 @@
 # numpy-onlinestats
 
+[![PyPI](https://img.shields.io/pypi/v/numpy-onlinestats)](https://pypi.org/project/numpy-onlinestats)
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/ilia-kats/numpy-onlinestats/master.svg)](https://results.pre-commit.ci/latest/github/ilia-kats/numpy-onlinestats/master)
+[![unit tests](https://github.com/ilia-kats/numpy-onlinestats/actions/workflows/test.yaml/badge.svg)](https://github.com/ilia-kats/numpy-onlinestats/actions/workflows/test.yaml)
+[![Documentation Status](https://readthedocs.org/projects/numpy-onlinestats/badge/?version=latest)](https://numpy-onlinestats.readthedocs.io/en/latest/?badge=latest)
+
 This is a Python package for element-wise streaming statistics of Numpy arrays, meaning that arrays can be added one-by-one.
 This is much more memory-efficient than first collecting all arrays before calculating statstics.
 One major usecase is Bayesian modeling, where the posterior distribution is often intractable and can only be approximated via sampling.
