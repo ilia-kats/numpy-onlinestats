@@ -1,5 +1,5 @@
 [build-system]
-requires = ["scikit-build-core >=0.4.3", "nanobind@git+https://github.com/wjakob/nanobind"]
+requires = ["scikit-build-core>=0.4.3", "nanobind>=1.5.0"]
 build-backend = "scikit_build_core.build"
 
 [project]
@@ -56,7 +56,6 @@ target-version = ["py310"]
 [tool.ruff]
 src = ["src"]
 line-length = 120
-target-version = "py310"
 select = [
     "F",  # Errors detected by Pyflakes
     "E",  # Error detected by Pycodestyle
