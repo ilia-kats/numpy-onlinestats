@@ -28,7 +28,11 @@ def test_reset(small_array):
         stats.add(i * small_array)
 
     stats.reset()
-    assert (stats.mean() == 0).all()
+    assert stats.nacc == 0
+    with pytest.raises(IndexError):
+        stats.quantile(0.5)
+        stats.mean()
+
     for i in range(1, 11):
         stats.add(i * small_array)
     assert (stats.quantile(0.49) == 5.5 * small_array).all()
@@ -70,3 +74,10 @@ def test_wrong_ndim(small_array):
 
 def test_constructor_arg(small_array):
     npo.NpOnlineStats(small_array, 10)
+
+
+def test_noarrays():
+    stats = npo.NpOnlineStats()
+    with pytest.raises(IndexError):
+        stats.quantile(0.5)
+        stats.mean()

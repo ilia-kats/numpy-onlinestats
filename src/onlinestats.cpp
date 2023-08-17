@@ -125,6 +125,8 @@ private:
     template<typename Function>
     nb::ndarray<nb::numpy, double> stat_array(Function f) const
     {
+        if (!m_n)
+            throw nb::index_error("Cannot calculate statistic because no arrays were added.");
         double *buf = new double[m_size];
         nb::capsule owner(buf, [](void *p) noexcept {
             delete[] (double *)p;
