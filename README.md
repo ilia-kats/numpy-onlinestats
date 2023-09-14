@@ -15,7 +15,8 @@ numpy-onlinestats approximates quantiles and cumulative distribution functions u
 ## Requirements
 
 - Python 3.10 or newer
-- A C++20 compatible compiler (developed with GCC 13 using `-std=c++20`)
+- A C++20 compatible compiler with OpenMP support (developed with GCC 13 using `-std=c++20`)
+- libopenmp
 
 ## Sample code
 
@@ -23,9 +24,9 @@ numpy-onlinestats approximates quantiles and cumulative distribution functions u
 import numpy as np
 import numpy_onlinestats as npo
 
-stats = npo.NpOnlineStats(np.random.uniform((5, 3, 7)))
+stats = npo.NpOnlineStats(np.random.uniform(size=(5, 3, 7)))
 for i in range(100):
-    stats.add(np.random.uniform((5, 3, 7)))
+    stats.add(np.random.uniform(size=(5, 3, 7)))
 
 stats.quantile(0.25)
 stats.mean()
