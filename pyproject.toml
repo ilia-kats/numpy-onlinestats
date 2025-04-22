@@ -107,6 +107,7 @@ convention = "google"
 [tool.cibuildwheel]
 skip = "pp*"
 archs = ["auto64"]
+build-verbosity = 3
 
 [tool.cibuildwheel.linux]
 build = "*manylinux*"
