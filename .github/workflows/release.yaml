@@ -20,6 +20,10 @@ jobs:
           fetch-depth: 0
           submodules: true
 
+      - name: install libopenmp
+        if: runner.os == 'macOS'
+        run: brew install libomp
+
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.23.2
 

@@ -122,4 +122,4 @@ before-build = "pip install delvewheel"
 repair-wheel-command = "delvewheel repair -w {dest_dir} {wheel}"
 
 [tool.cibuildwheel.macos]
-environment = {MACOSX_DEPLOYMENT_TARGET="10.15"}
+environment = {MACOSX_DEPLOYMENT_TARGET="14"}

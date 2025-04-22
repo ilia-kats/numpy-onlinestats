@@ -33,8 +33,7 @@ find_package(Python 3.10
 if(APPLE)
   # https://github.com/Homebrew/homebrew-core/issues/112107 and
   # https://gitlab.kitware.com/cmake/cmake/-/issues/24097
-  execute_process(COMMAND brew --prefix OUTPUT_VARIABLE BREW_PREFIX OUTPUT_STRIP_TRAILING_WHITESPACE)
-  set(OpenMP_ROOT ${BREW_PREFIX}/opt/libomp)
+  execute_process(COMMAND brew --prefix --installed libomp OUTPUT_VARIABLE OpenMP_ROOT OUTPUT_STRIP_TRAILING_WHITESPACE)
 endif()
 
 find_package(OpenMP REQUIRED)
