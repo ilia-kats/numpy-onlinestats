@@ -20,9 +20,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          os: ubuntu-latest
-          python: ["3.10", "3.11", "3.12", "3.13"]
+        os: [ubuntu-latest]
+        python: ["3.10", "3.11", "3.12", "3.13"]
 
     env:
       OS: ${{ matrix.os }}
